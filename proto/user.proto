@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package user;
+option go_package = "./pb;user";
+
+message  User {
+  string id = 1;
+  string email = 2;
+  string password = 3;
+}
+message CreateReq {
+  string email = 1;
+  string password = 2;
+}
+message CreateRes {
+  User user = 1;
+  Status status = 2;
+}
+message DeleteReq {string id = 1;}
+message DeleteRes {
+  Status status = 1;
+}
+
+message ListUserResponse {
+  repeated User user = 1;
+  Status status = 2;
+}
+
+message ListReq {}
+
+service UserService {
+  rpc Create(CreateReq) returns (CreateRes) {}
+  rpc Delete(DeleteReq) returns (DeleteRes) {}
+  rpc List(ListReq) returns (ListUserResponse) {}
+}
+
+message Status {
+  enum StatusCode {
+    FAILED = 0; NO_IMPL_YET = 1; INVALID_QUERY = 2; PARTIAL_SUCCESS = 3;
+    SUCCESS = 4;
+  }
+
+  StatusCode code = 1;
+  string msg = 2;
+}

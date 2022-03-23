@@ -1,0 +1,84 @@
+version: "3.9"
+
+services:
+  psql:
+    image: postgres:12.10
+    container_name: storage
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - '5555:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - main
+  redis:
+    image: redis:6.2.6
+    container_name: cache
+    restart: always
+    volumes:
+        - redisdata:/data
+    networks:
+      - main
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.0.1
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - main
+
+  broker:
+    image: confluentinc/cp-kafka:7.0.1
+    container_name: broker
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://broker:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    networks:
+      - main
+  clickhouse:
+    image: yandex/clickhouse-server
+    container_name: logger
+    expose:
+      - "8123"
+      - "9000"
+    depends_on:
+      - zookeeper
+      - broker
+    volumes:
+      - .clickhouse/config.xml:/etc/clickhouse-server/config.xml
+      - .clickhouse/zookeeper-servers.xml:/etc/clickhouse-server/conf.d/zookeeper-servers.xml
+      - clickhousedata:/var/lib/clickhouse
+    networks:
+      - main
+  app:
+    container_name: app
+    build: .
+    ports:
+      - '7777:7777'
+    depends_on:
+      - psql
+      - redis
+      - clickhouse
+    networks:
+      - main
+
+volumes:
+  pgdata:
+  redisdata:
+  clickhousedata:
+
+networks:
+  main:
